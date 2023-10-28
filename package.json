@@ -1,0 +1,29 @@
+{
+  "name": "hue-hdmi-server",
+  "version": "1.0.0",
+  "description": "A web server with mDNS discovery that uses OpenCV to sync video input to Phillips Hue lights",
+  "main": "build/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "swc src -d build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@homebridge/ciao": "^1.1.7",
+    "@koa/router": "^12.0.1",
+    "@u4/opencv4nodejs": "^6.5.2",
+    "hue-sync": "^0.1.3",
+    "koa": "^2.14.2",
+    "koa-body": "^6.0.1"
+  },
+  "devDependencies": {
+    "@swc-node/core": "^1.10.6",
+    "@swc/cli": "^0.1.62",
+    "@types/koa": "^2.13.10",
+    "@types/koa__router": "^12.0.3"
+  }
+}
