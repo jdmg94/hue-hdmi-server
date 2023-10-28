@@ -18,8 +18,8 @@ dependencies:
     specifier: ^6.5.2
     version: 6.5.2
   hue-sync:
-    specifier: ^0.1.3
-    version: 0.1.3
+    specifier: github:jdmg94/hue-sync
+    version: github.com/jdmg94/hue-sync/00367dda7d554039efed260f1dcfd2d475eebdd6
   koa:
     specifier: ^2.14.2
     version: 2.14.2
@@ -1251,20 +1251,6 @@ packages:
       - supports-color
     dev: false
 
-  /hue-sync@0.1.3:
-    resolution: {integrity: sha512-it3GzkXGTcfajsIrloGfkldw5QfPWs+Gs9wC/u5XqHeUXnpcb10lrzm3AQFk3cjkbKnSSBbIKu9Waxp6eYrjIQ==}
-    peerDependencies:
-      cross-fetch: ^3.1.5
-    peerDependenciesMeta:
-      cross-fetch:
-        optional: true
-    dependencies:
-      node-dns-sd: 0.4.2
-      node-dtls-client: 1.1.1
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
   /human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
@@ -1805,8 +1791,8 @@ packages:
     dev: false
     optional: true
 
-  /node-dns-sd@0.4.2:
-    resolution: {integrity: sha512-fZvDqy19zyaiSXajmRjwue1VWLrJcy8bTV/LJVtAx8DeEFVlXRBMyZknW+q6CEfiW8Y4MQDDKh9x5wF32BHAHQ==}
+  /node-dns-sd@1.0.1:
+    resolution: {integrity: sha512-GCL6FgvkHoDnvJ1Yamf8mY16lYymWmYxjne4q1MC9C8sTZn9XR3BbwsrBQGikMESMFDFLC5MovNZn6wFl1yrdQ==}
     dev: false
 
   /node-dtls-client@1.1.1:
@@ -2445,4 +2431,20 @@ packages:
 
   /zod@3.22.4:
     resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
+    dev: false
+
+  github.com/jdmg94/hue-sync/00367dda7d554039efed260f1dcfd2d475eebdd6:
+    resolution: {tarball: https://codeload.github.com/jdmg94/hue-sync/tar.gz/00367dda7d554039efed260f1dcfd2d475eebdd6}
+    name: hue-sync
+    version: 0.1.5
+    peerDependencies:
+      cross-fetch: ^4.0.0
+    peerDependenciesMeta:
+      cross-fetch:
+        optional: true
+    dependencies:
+      node-dns-sd: 1.0.1
+      node-dtls-client: 1.1.1
+    transitivePeerDependencies:
+      - supports-color
     dev: false
