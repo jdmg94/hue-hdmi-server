@@ -19,6 +19,13 @@ type HueWebState = {
   entertainmentArea?: EntertainmentArea
 }
 
+enum ServerStatus {
+  NOT_READY,
+  IDLE,
+  RUNNING,
+  ERROR,
+}
+
 export async function startWeb(port = 8080) {
   const app = new Koa()
   const router = new KoaRouter()
@@ -155,12 +162,14 @@ export async function startWeb(port = 8080) {
     }
   })
 
-  router.get("/quick-start", async (context) => {
-    const [device] = await HueSync.discover()
-    state.bridge = new HueSync({
-      id: device.id,
-      credentials: credentials!,
-      url: device.internalipaddress!,
+  router.put("/quick-start", async (context) => {
+     state.bridge = new HueSync({
+      id: context.request.body.id,
+      credentials: {
+        clientkey: context.request.body.key,
+        username: context.request.body.user,
+      },
+      url: context.request.body.ip,
     })
 
     context.body = {
