@@ -35,8 +35,6 @@ COPY --chown=hue-hdmi-server . .
 ENV NODE_ENV=production
 RUN pnpm run build
 
-RUN pnpm remove @swc/cli @swc-node/core
-
 # switch to unprivileged user
 USER hue-hdmi-server
 

@@ -1,6 +1,6 @@
 import Koa from "koa"
 import Boom from "@hapi/boom"
-import bodyParser from "koa-body"
+import { koaBody } from "koa-body"
 import KoaRouter from "@koa/router"
 import Bonjour from "@homebridge/ciao"
 import { Worker } from "worker_threads"
@@ -32,7 +32,7 @@ export async function startWeb(port = 8080) {
     entertainmentArea: undefined,
   }
 
-  app.use(bodyParser())
+  app.use(koaBody())
   app.use(router.routes())
   app.use(
     router.allowedMethods({
