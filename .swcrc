@@ -1,0 +1,11 @@
+{
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "tsx": true
+    },
+    "target": "es2016",
+    "loose": false
+  },  
+  "minify": false
+}
