@@ -1,6 +1,6 @@
 {
   "name": "hue-hdmi-server",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A web server with mDNS discovery that uses OpenCV to sync video input to Phillips Hue lights",
   "main": "build/index.js",
   "type": "module",

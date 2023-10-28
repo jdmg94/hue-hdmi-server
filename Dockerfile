@@ -18,7 +18,8 @@ ENV OPENCV_BIN_DIR=/usr/local/bin
 
 COPY package*.json ./
 
-RUN pnpm install
+RUN pnpm install --prod
+RUN pnpm add -D @swc/cli @swc-node/core
 RUN rm -rf node_modules/@u4 && ln -s /usr/lib/node_modules/@u4 ./node_modules/
 
 # install Signify CA certificate
@@ -33,6 +34,8 @@ COPY --chown=hue-hdmi-server . .
 # create a production build
 ENV NODE_ENV=production
 RUN pnpm run build
+
+RUN pnpm remove @swc/cli @swc-node/core
 
 # switch to unprivileged user
 USER hue-hdmi-server
