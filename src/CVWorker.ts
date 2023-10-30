@@ -23,7 +23,7 @@ const stopVideo = () => {
 
 const processVideo = async () => {
   shouldRun = true
-  const capture = new VideoCapture(CAP_ANY)
+  const capture = new VideoCapture(CAP_ANY)  
 
   await sleep(1000)
 
@@ -55,19 +55,22 @@ const processVideo = async () => {
   }, 1)
 }
 
-parentPort!.on("message", (message) => {
-  if (message === "start") {
-    processVideo()
-  }
+parentPort?.on("message", (message) => {
+  switch (message) {
+    case "start":
+      processVideo();
+      break;
 
-  if (message === "stop") {
-    stopVideo()
-  }
-
-  if (message === "reset") {
-    stopVideo()
-    sleep(250).then(() => {
-      processVideo()
-    })
+    case "stop":
+      stopVideo();
+      break;
+    
+    case "reset":
+      stopVideo(); sleep(250).then(() => {
+        processVideo()
+      })
+      break;
+    
+    default: // do nothing https://vm.tiktok.com/ZMjs2BCak/
   }
 })

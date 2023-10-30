@@ -32,6 +32,7 @@ export async function startWeb(port = 8080) {
   const bonjour = Bonjour.getResponder()
   const worker = new Worker("./build/CVWorker")
   let credentials = await getRegisteredCredentials()
+  let serverStatus = ServerStatus.NOT_READY
 
   const state: HueWebState = {
     isActive: false,
@@ -61,19 +62,9 @@ export async function startWeb(port = 8080) {
     state.bridge!.transition(colorData as Array<[number, number, number]>)
   })
 
-  router.get("/check", async (context) => {
-    let status = "NOT_READY"
-
-    if (state.bridge && credentials) {
-      status = "IDLE"
-
-      if (state.isActive) {
-        status = "RUNNING"
-      }
-    }
-
+  router.get("/check", (context) => {
     context.body = {
-      status,
+      status: serverStatus,
     }
   })
 
@@ -92,9 +83,10 @@ export async function startWeb(port = 8080) {
     await persistNewCredentials(nextCredentials)
 
     credentials = nextCredentials
+    serverStatus = ServerStatus.NOT_READY
 
     context.body = {
-      status: "IDLE",
+      status: serverStatus
     }
   })
 
@@ -132,9 +124,11 @@ export async function startWeb(port = 8080) {
       await state.bridge.start(area)
       worker.postMessage("start")
 
+      serverStatus = ServerStatus.RUNNING
+
       state.isActive = true
       context.body = {
-        status: "RUNNING",
+        status: serverStatus,
       }
     }
   })
@@ -172,8 +166,10 @@ export async function startWeb(port = 8080) {
       url: context.request.body.ip,
     })
 
+    serverStatus = ServerStatus.IDLE
+
     context.body = {
-      status: "IDLE",
+      status: serverStatus,
     }
   })
 
