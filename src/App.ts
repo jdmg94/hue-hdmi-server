@@ -20,16 +20,18 @@ type HueWebState = {
 }
 
 enum ServerStatus {
-  NOT_READY,
-  IDLE,
-  RUNNING,
-  ERROR,
+  NOT_READY = "not ready",
+  READY = "ready",
+  IDLE = "idle",
+  WORKING = "working",
+  ERROR = "error",
 }
 
 export async function startWeb(port = 8080) {
   const app = new Koa()
   const router = new KoaRouter()
   const bonjour = Bonjour.getResponder()
+  const controller = new AbortController()
   const worker = new Worker("./build/CVWorker")
   let credentials = await getRegisteredCredentials()
   let serverStatus = ServerStatus.NOT_READY
@@ -83,10 +85,8 @@ export async function startWeb(port = 8080) {
     await persistNewCredentials(nextCredentials)
 
     credentials = nextCredentials
-    serverStatus = ServerStatus.NOT_READY
-
     context.body = {
-      status: serverStatus
+      status: 'ok'
     }
   })
 
@@ -124,7 +124,7 @@ export async function startWeb(port = 8080) {
       await state.bridge.start(area)
       worker.postMessage("start")
 
-      serverStatus = ServerStatus.RUNNING
+      serverStatus = ServerStatus.WORKING
 
       state.isActive = true
       context.body = {
@@ -146,9 +146,11 @@ export async function startWeb(port = 8080) {
       await sleep(500)
       state.bridge?.stop()
 
+      serverStatus = ServerStatus.IDLE
+
       state.isActive = false
       context.body = {
-        status: "IDLE",
+        status: 'ok',
       }
     } catch {
       context.status = noSocketException.output.statusCode
@@ -157,24 +159,38 @@ export async function startWeb(port = 8080) {
   })
 
   router.put("/quick-start", async (context) => {
+     credentials =  {
+       clientkey: context.request.body.key,
+       username: context.request.body.user,
+     }     
      state.bridge = new HueSync({
       id: context.request.body.id,
-      credentials: {
-        clientkey: context.request.body.key,
-        username: context.request.body.user,
-      },
+      credentials,
       url: context.request.body.ip,
     })
 
-    serverStatus = ServerStatus.IDLE
+    await persistNewCredentials(credentials)
+
+    serverStatus = ServerStatus.READY
 
     context.body = {
       status: serverStatus,
     }
   })
 
-  app.listen(port)
   broadcast.advertise()
+  app.listen({
+    host: '0.0.0.0',
+    port,
+    signal: controller.signal
+  })
   console.log(`listening on port ${port}!`)
+
+  return () => {
+      controller.abort()
+      broadcast.end().then(() => {
+        broadcast.destroy()
+      })
+  }
 }
 

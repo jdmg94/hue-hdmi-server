@@ -27,10 +27,6 @@ const processVideo = async () => {
 
   await sleep(1000)
 
-  if (!capture) {
-    return parentPort!.postMessage("error: Could not open video capture device")
-  }
-
   capture.set(CAP_PROP_FPS, 30)
   capture.set(CAP_PROP_CONVERT_RGB, 1)
   capture.set(CAP_PROP_FRAME_WIDTH, size.width)
@@ -71,6 +67,6 @@ parentPort?.on("message", (message) => {
       })
       break;
     
-    default: // do nothing https://vm.tiktok.com/ZMjs2BCak/
+    default: // do nothing
   }
 })

@@ -2,7 +2,7 @@ FROM superiortech/opencv4nodejs
 
 # install dependencies
 RUN apt-get update 
-RUN apt-get install -y --no-install-recommends dumb-init avahi-utils curl git
+RUN apt-get install -y --no-install-recommends dumb-init avahi-utils curl git v4l-utils
 
 # install pnpm
 RUN npm i -g pnpm
