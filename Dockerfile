@@ -2,7 +2,7 @@ FROM superiortech/opencv4nodejs
 
 # install dependencies
 RUN apt-get update 
-RUN apt-get install -y --no-install-recommends dumb-init avahi-utils curl git v4l-utils
+RUN apt-get install -y --no-install-recommends dumb-init curl git
 
 # install pnpm
 RUN npm i -g pnpm
@@ -32,6 +32,7 @@ COPY . .
 ENV NODE_ENV=production
 RUN pnpm run build
 
+EXPOSE 443
 EXPOSE 8080
 EXPOSE 2100/udp
 
