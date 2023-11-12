@@ -27,16 +27,6 @@ enum ServerStatus {
   ERROR = "error",
 }
 
-<<<<<<< HEAD
-export async function startWeb(port = 8080) {
-  const app = new Koa();
-  const router = new KoaRouter();
-  const bonjour = Bonjour.getResponder();
-  const controller = new AbortController();
-  const worker = new Worker("./build/CVWorker");
-  let credentials = await getRegisteredCredentials();
-  let serverStatus = ServerStatus.NOT_READY;
-=======
 export async function startWeb(tunnelUrl, port = 8080) {
   const app = new Koa()
   const router = new KoaRouter()
@@ -45,7 +35,6 @@ export async function startWeb(tunnelUrl, port = 8080) {
   const worker = new Worker("./build/CVWorker")
   let credentials = await getRegisteredCredentials()
   let serverStatus = ServerStatus.NOT_READY
->>>>>>> e0988b3 (feature: adds localtunnel to bypass lan)
 
   const state: HueWebState = {
     isActive: false,
@@ -64,17 +53,13 @@ export async function startWeb(tunnelUrl, port = 8080) {
   );
 
   const broadcast = bonjour.createService({
-    port: 443,
+    port,
     name: "Hue HDMI Sync",
     type: "hue-hdmi-sync",
-<<<<<<< HEAD
-  });
-=======
     txt: {
       url: tunnelUrl,
     }
   })
->>>>>>> e0988b3 (feature: adds localtunnel to bypass lan)
 
   worker.on("message", (message) => {
     const colorData = chunk<number>(message, 3);

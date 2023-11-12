@@ -4,7 +4,7 @@ import localtunnel from 'localtunnel'
 const init = async () => {
   const port = 3000
   const tunnel = await localtunnel({ port })
-  const closeServer = await startWeb(port)
+  const closeServer = await startWeb(tunnel.url, port)
   
   
   console.log(`listening on port ${port}!`)
