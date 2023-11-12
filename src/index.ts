@@ -1,7 +1,10 @@
 import { startWeb } from "./App"
 
-const init = () => {
-  const closeServer = startWeb()
+const init = async () => {
+  const port = 8080
+  const closeServer = await startWeb(port)
+  console.log(`listening on port ${port}!`)
+
 
   const closeGracefully: NodeJS.SignalsListener = (signal) => {
     console.log(`*^!@4=> Received signal to terminate: ${signal}`)
