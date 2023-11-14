@@ -4,10 +4,14 @@ import { koaBody } from "koa-body";
 import KoaRouter from "@koa/router";
 import Bonjour from "@homebridge/ciao";
 import { Worker } from "worker_threads";
+import { get, isEmpty } from "lodash-es";
 import HueSync, { EntertainmentArea } from "hue-sync";
 
 import chunk from "./utils/chunk";
 import sleep from "./utils/sleep";
+import { store } from "./state/store";
+import { setBridge, setCredentials, setServerStatus } from "./state/reducer";
+import { ServerStatus } from "./utils/status";
 import {
   persistNewCredentials,
   getRegisteredCredentials,
@@ -19,28 +23,26 @@ type HueWebState = {
   entertainmentArea?: EntertainmentArea;
 };
 
-enum ServerStatus {
-  NOT_READY = "not ready",
-  READY = "ready",
-  IDLE = "idle",
-  WORKING = "working",
-  ERROR = "error",
-}
+const { dispatch, subscribe, getState } = store;
+
+const observe = (path: string | string[]) => {
+  const isPathEmpty = isEmpty(path);
+  let result = isPathEmpty ? getState() : get(getState(), path);
+
+  subscribe(() => {
+    result = isPathEmpty ? getState() : get(getState(), path);
+  });
+
+  return result;
+};
 
 export async function startWeb(tunnelUrl, port = 8080) {
-  const app = new Koa()
-  const router = new KoaRouter()
-  const bonjour = Bonjour.getResponder()
-  const controller = new AbortController()
-  const worker = new Worker("./build/CVWorker")
-  let credentials = await getRegisteredCredentials()
-  let serverStatus = ServerStatus.NOT_READY
-
-  const state: HueWebState = {
-    isActive: false,
-    bridge: undefined,
-    entertainmentArea: undefined,
-  };
+  const app = new Koa();
+  const router = new KoaRouter();
+  const bridge = observe("bridge");
+  const bonjour = Bonjour.getResponder();
+  const controller = new AbortController();
+  const worker = new Worker("./build/CVWorker");
 
   app.use(koaBody());
   app.use(router.routes());
@@ -58,18 +60,21 @@ export async function startWeb(tunnelUrl, port = 8080) {
     type: "hue-hdmi-sync",
     txt: {
       url: tunnelUrl,
-    }
-  })
+    },
+  });
 
   worker.on("message", (message) => {
     const colorData = chunk<number>(message, 3);
-
-    state.bridge!.transition(colorData as Array<[number, number, number]>);
+    if (bridge) {
+      bridge.transition(colorData as Array<[number, number, number]>);
+    } else {
+      console.log("no bridge!");
+    }
   });
 
   router.get("/check", (context) => {
     context.body = {
-      status: serverStatus,
+      status: observe("status"),
     };
   });
 
@@ -85,36 +90,37 @@ export async function startWeb(tunnelUrl, port = 8080) {
 
     const nextCredentials = await HueSync.register(ip, name);
 
-    await persistNewCredentials(nextCredentials);
+    dispatch(setCredentials(nextCredentials));
 
-    credentials = nextCredentials;
     context.body = {
-      status: "ok",
+      result: "OK",
+      status: ServerStatus.NOT_READY,
     };
   });
 
   router.get("/entertainment-areas", async (context) => {
-    if (!state.bridge) {
-      const notInitializedException =
-        Boom.preconditionFailed("Not Initialized!").output;
+    if (!bridge) {
+      const { output: notInitializedException } =
+        Boom.preconditionFailed("Not Initialized!");
 
       context.status = notInitializedException.statusCode;
       context.body = {
-        status: "ERROR",
+        result: "ERROR",
+        status: ServerStatus.ERROR,
         payload: notInitializedException.payload,
       };
     } else {
-      const data = await state.bridge?.getEntertainmentAreas();
+      const data = await bridge?.getEntertainmentAreas();
 
       context.body = data.map((item) => ({ id: item.id, name: item.name }));
     }
   });
 
   router.get("/stream/:id", async (context) => {
-    if (!state.bridge) {
-      const notReadyException = Boom.preconditionFailed(
+    if (!bridge) {
+      const { output: notReadyException } = Boom.preconditionFailed(
         "Not Ready to Stream!"
-      ).output;
+      );
 
       context.status = notReadyException.statusCode;
       context.body = {
@@ -122,23 +128,22 @@ export async function startWeb(tunnelUrl, port = 8080) {
         payload: notReadyException.payload,
       };
     } else {
-      const area = await state.bridge?.getEntertainmentArea(context.params.id);
+      const area = await bridge?.getEntertainmentArea(context.params.id);
 
-      await state.bridge.start(area);
+      await bridge.start(area);
       worker.postMessage("start");
 
-      serverStatus = ServerStatus.WORKING;
+      dispatch(setServerStatus(ServerStatus.WORKING));
 
-      state.isActive = true;
       context.body = {
-        status: serverStatus,
+        status: ServerStatus.WORKING,
       };
     }
   });
 
   router.get("/stop", async (context) => {
     const noSocketException = Boom.preconditionFailed("No Active Stream!");
-    if (!state.bridge) {
+    if (!bridge) {
       context.status = noSocketException.output.statusCode;
       context.body = noSocketException.output.payload;
       return;
@@ -147,11 +152,10 @@ export async function startWeb(tunnelUrl, port = 8080) {
     try {
       worker.postMessage("stop");
       await sleep(500);
-      state.bridge?.stop();
+      bridge?.stop();
 
-      serverStatus = ServerStatus.IDLE;
+      dispatch(setServerStatus(ServerStatus.READY));
 
-      state.isActive = false;
       context.body = {
         status: "ok",
       };
@@ -162,22 +166,25 @@ export async function startWeb(tunnelUrl, port = 8080) {
   });
 
   router.put("/quick-start", async (context) => {
-    credentials = {
+    const credentials = {
       clientkey: context.request.body.key,
       username: context.request.body.user,
     };
-    state.bridge = new HueSync({
-      id: context.request.body.id,
-      credentials,
-      url: context.request.body.ip,
-    });
 
-    await persistNewCredentials(credentials);
-
-    serverStatus = ServerStatus.READY;
+    dispatch(setCredentials(credentials));
+    dispatch(setServerStatus(ServerStatus.READY));
+    dispatch(
+      setBridge(
+        new HueSync({
+          id: context.request.body.id,
+          credentials,
+          url: context.request.body.ip,
+        })
+      )
+    );
 
     context.body = {
-      status: serverStatus,
+      status: ServerStatus.READY,
     };
   });
 
