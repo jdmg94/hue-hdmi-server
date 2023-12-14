@@ -24,6 +24,7 @@
     "@swc-node/core": "^1.10.6",
     "@swc/cli": "^0.1.62",
     "@types/koa": "^2.13.10",
-    "@types/koa__router": "^12.0.3"
+    "@types/koa__router": "^12.0.3",
+    "@types/localtunnel": "^2.0.4"
   }
 }

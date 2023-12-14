@@ -5,8 +5,7 @@ const init = async () => {
   const port = 3000
   const tunnel = await localtunnel({ port })
   const closeServer = await startWeb(tunnel.url, port)
-  
-  
+
   console.log(`listening on port ${port}!`)
   console.log(`tunneling to ${tunnel.url}`)
 
@@ -14,7 +13,8 @@ const init = async () => {
     console.log(`*^!@4=> Received signal to terminate: ${signal}`)
 
     tunnel.close()
-    closeServer()    
+    closeServer()
+
     // await other things we should cleanup nicely
     process.kill(process.pid, signal)
   }

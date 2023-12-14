@@ -13,7 +13,7 @@
 The app can be run dockerized or directly on your machine
 
 ```sh
-pnpm install
+docker run -d --net host --device /dev/video0 superiortech/hue-hdmi-server
 ```
 
 ## Author
@@ -25,7 +25,7 @@ pnpm install
 
 ## Show your support
 
-Give a ⭐️ if this project helped you!
+Give a ⭐️ if this project helped you
 
 ***
 _This README was generated with ❤️ by [readme-md-generator](https://github.com/kefranabg/readme-md-generator)_

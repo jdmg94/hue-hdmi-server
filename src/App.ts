@@ -27,7 +27,7 @@ enum ServerStatus {
   ERROR = "error",
 }
 
-export async function startWeb(tunnelUrl, port = 8080) {
+export async function startWeb(tunnelUrl: string, port = 8080) {
   const app = new Koa()
   const router = new KoaRouter()
   const bonjour = Bonjour.getResponder()
