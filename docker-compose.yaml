@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  instance:
+    restart: always
+    image: superiortech/hue-hdmi-server:dev
+    network_mode: "host"
+    devices:
+      - "/dev/video0:/dev/video0"
+
