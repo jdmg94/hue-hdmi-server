@@ -13,7 +13,7 @@ export const persistNewCredentials = async (data: BridgeClientCredentials) => {
 };
 
 export const getRegisteredCredentials =
-  async (): Promise<BridgeClientCredentials | null> => {
+  async (): Promise<BridgeClientCredentials | undefined> => {
     try {
       await access(BridgeClientCredentialsPath);
 
@@ -22,9 +22,7 @@ export const getRegisteredCredentials =
       });
 
       return JSON.parse(clientData) as BridgeClientCredentials;
-    } catch {
-      return null;
-    }
+    } catch {}
   };
 
 export const clearPersistedCredentials = async () => {

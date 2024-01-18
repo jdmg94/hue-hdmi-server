@@ -1,10 +1,9 @@
-import Koa from "koa";
+import { Hono } from "hono";
 import Boom from "@hapi/boom";
-import { koaBody } from "koa-body";
-import KoaRouter from "@koa/router";
 import Bonjour from "@homebridge/ciao";
 import { Worker } from "worker_threads";
-import HueSync, { EntertainmentArea } from "hue-sync";
+import { serve } from "@hono/node-server";
+import HueSync, { EntertainmentArea, BridgeClientCredentials } from "hue-sync";
 
 import chunk from "./utils/chunk";
 import sleep from "./utils/sleep";
@@ -12,12 +11,6 @@ import {
   persistNewCredentials,
   getRegisteredCredentials,
 } from "./utils/credentialHelpers";
-
-type HueWebState = {
-  isActive: boolean;
-  bridge?: HueSync;
-  entertainmentArea?: EntertainmentArea;
-};
 
 enum ServerStatus {
   NOT_READY = "not ready",
@@ -27,30 +20,20 @@ enum ServerStatus {
   ERROR = "error",
 }
 
-export async function startWeb(tunnelUrl: string, port = 8080) {
-  const app = new Koa()
-  const router = new KoaRouter()
+type ServerState = {
+  Variables: {
+    status: ServerStatus;
+    credentials?: BridgeClientCredentials;
+    bridge?: HueSync;
+    entertainmentArea?: EntertainmentArea;
+  }
+}
+
+export async function startWeb(tunnelUrl, port = 8080) {
   const bonjour = Bonjour.getResponder()
-  const controller = new AbortController()
+  const router = new Hono<ServerState>()
   const worker = new Worker("./build/CVWorker")
-  let credentials = await getRegisteredCredentials()
-  let serverStatus = ServerStatus.NOT_READY
 
-  const state: HueWebState = {
-    isActive: false,
-    bridge: undefined,
-    entertainmentArea: undefined,
-  };
-
-  app.use(koaBody());
-  app.use(router.routes());
-  app.use(
-    router.allowedMethods({
-      throw: true,
-      notImplemented: () => Boom.notImplemented(),
-      methodNotAllowed: () => Boom.methodNotAllowed(),
-    })
-  );
 
   const broadcast = bonjour.createService({
     port,
@@ -61,138 +44,163 @@ export async function startWeb(tunnelUrl: string, port = 8080) {
     }
   })
 
-  worker.on("message", (message) => {
-    const colorData = chunk<number>(message, 3);
+  router.use("*", async (context, next) => {
+    const credentials = await getRegisteredCredentials()
 
-    state.bridge!.transition(colorData as Array<[number, number, number]>);
-  });
+    // define initial state
+    context.set('credentials', credentials)
+    context.set('status', ServerStatus.NOT_READY)
+    return next()
+  })
 
   router.get("/check", (context) => {
-    console.log('checking the status!')
-    context.body = {
-      status: serverStatus,
-    };
-  });
+    const status = context.get('status')
+
+    return context.json({
+      status,
+    })
+  })
 
   router.get("/discovery", async (context) => {
-    const devices = await HueSync.discover();
+    const devices = await HueSync.discover()
 
-    context.body = devices;
-  });
+    return context.json(devices)
+  })
+
+  type RegisterArgs = {
+    ip: string;
+    name?: string;
+  }
 
   router.post("/register", async (context) => {
-    const ip = context.request.body.ip;
-    const name = context.request.body.name || "hue-hdmi-sync";
+    const reqBody = await context.req.json<RegisterArgs>();
 
-    const nextCredentials = await HueSync.register(ip, name);
+    const ip = reqBody.ip
+    const name = reqBody.name || "hue-hdmi-sync"
 
-    await persistNewCredentials(nextCredentials);
+    const nextCredentials = await HueSync.register(ip, name)
 
-    credentials = nextCredentials;
-    context.body = {
+    await persistNewCredentials(nextCredentials)
+
+    context.set('credentials', nextCredentials)
+
+    return context.json({
       status: "ok",
-    };
-  });
+    })
+  })
 
   router.get("/entertainment-areas", async (context) => {
-    if (!state.bridge) {
+    const bridge = context.get('bridge')
+    if (!bridge) {
       const notInitializedException =
-        Boom.preconditionFailed("Not Initialized!").output;
+        Boom.preconditionFailed("Not Initialized!").output
 
-      context.status = notInitializedException.statusCode;
-      context.body = {
+      context.status(notInitializedException.statusCode)
+      return context.json({
         status: "ERROR",
         payload: notInitializedException.payload,
-      };
+      })
     } else {
-      const data = await state.bridge?.getEntertainmentAreas();
+      const data = await bridge.getEntertainmentAreas()
+      const result = data?.map((item) => ({ id: item.id, name: item.name })) || []
 
-      context.body = data.map((item) => ({ id: item.id, name: item.name }));
+      return context.json(result)
     }
-  });
+  })
 
   router.get("/stream/:id", async (context) => {
-    if (!state.bridge) {
+    const bridge = context.get('bridge')
+    if (!bridge) {
       const notReadyException = Boom.preconditionFailed(
         "Not Ready to Stream!"
       ).output;
 
-      context.status = notReadyException.statusCode;
-      context.body = {
+      context.status(notReadyException.statusCode)
+      return context.json({
         status: "ERROR",
         payload: notReadyException.payload,
-      };
+      })
     } else {
-      const area = await state.bridge?.getEntertainmentArea(context.params.id);
+      worker.on("message", (message) => {
+        const colorData = chunk<number>(message, 3)
 
-      await state.bridge.start(area);
+        bridge.transition(colorData as Array<[number, number, number]>)
+      })
+
+      const id = context.req.param('id');
+      const area = await bridge.getEntertainmentArea(id);
+
+      await bridge.start(area);
       worker.postMessage("start");
 
-      serverStatus = ServerStatus.WORKING;
+      context.set('status', ServerStatus.WORKING)
 
-      state.isActive = true;
-      context.body = {
-        status: serverStatus,
-      };
+      return context.json({
+        status: ServerStatus.WORKING,
+      })
     }
-  });
+  })
 
   router.get("/stop", async (context) => {
+    const bridge = context.get('bridge')
     const noSocketException = Boom.preconditionFailed("No Active Stream!");
-    if (!state.bridge) {
-      context.status = noSocketException.output.statusCode;
-      context.body = noSocketException.output.payload;
-      return;
+    if (!bridge) {
+      context.status(noSocketException.output.statusCode)
+
+      return context.json(noSocketException.output.payload)
     }
 
     try {
-      worker.postMessage("stop");
-      await sleep(500);
-      state.bridge?.stop();
+      worker.postMessage("stop")
+      worker.removeAllListeners()
 
-      serverStatus = ServerStatus.IDLE;
+      await sleep(500)
 
-      state.isActive = false;
-      context.body = {
+      bridge.stop()
+      context.set('status', ServerStatus.IDLE)
+
+      return context.json({
         status: "ok",
-      };
+      })
     } catch {
-      context.status = noSocketException.output.statusCode;
-      context.body = noSocketException.output.payload;
+      context.status(noSocketException.output.statusCode)
+
+      return context.json(noSocketException.output.payload)
     }
-  });
+  })
 
   router.put("/quick-start", async (context) => {
-    credentials = {
-      clientkey: context.request.body.key,
-      username: context.request.body.user,
-    };
-    state.bridge = new HueSync({
-      id: context.request.body.id,
+    const reqBody = await context.req.json();
+    const credentials = {
+      clientkey: reqBody.key,
+      username: reqBody.user,
+    }
+
+    const bridge = new HueSync({
       credentials,
-      url: context.request.body.ip,
-    });
+      id: reqBody.id,
+      url: reqBody.ip,
+    })
 
-    await persistNewCredentials(credentials);
+    await persistNewCredentials(credentials)
+    context.set('bridge', bridge)
+    context.set('status', ServerStatus.READY)
 
-    serverStatus = ServerStatus.READY;
-
-    context.body = {
-      status: serverStatus,
-    };
-  });
+    return context.json({
+      status: ServerStatus.READY,
+    })
+  })
 
   broadcast.advertise();
-  app.listen({
-    host: "0.0.0.0",
+  const server = serve({
+    ...router,
     port,
-    signal: controller.signal,
-  });
+  })
 
   return () => {
-    controller.abort();
+    server.close()
     broadcast.end().then(() => {
-      broadcast.destroy();
-    });
-  };
+      broadcast.destroy()
+    })
+  }
 }
