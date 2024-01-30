@@ -20,18 +20,16 @@ enum ServerStatus {
   ERROR = "error",
 }
 
-type ServerState = {
-  Variables: {
-    status: ServerStatus;
-    credentials?: BridgeClientCredentials;
-    bridge?: HueSync;
-    entertainmentArea?: EntertainmentArea;
-  }
+export type ServerState = {
+  status: ServerStatus;
+  credentials?: BridgeClientCredentials;
+  bridge?: HueSync;
+  entertainmentArea?: EntertainmentArea;
 }
 
-export async function startWeb(tunnelUrl, port = 8080) {
+export async function startWeb(tunnelUrl: string, port = 8080) {
   const bonjour = Bonjour.getResponder()
-  const router = new Hono<ServerState>()
+  const router = new Hono<{ Variables: ServerState }>()
   const worker = new Worker("./build/CVWorker")
 
 
@@ -53,7 +51,7 @@ export async function startWeb(tunnelUrl, port = 8080) {
     return next()
   })
 
-  router.get("/check", (context) => {
+  router.get("/check", (context) => {    
     const status = context.get('status')
 
     return context.json({
@@ -182,9 +180,12 @@ export async function startWeb(tunnelUrl, port = 8080) {
       url: reqBody.ip,
     })
 
-    await persistNewCredentials(credentials)
+    console.log('got registered!')
+    // await persistNewCredentials(credentials)
     context.set('bridge', bridge)
     context.set('status', ServerStatus.READY)
+
+    console.log('saved!')
 
     return context.json({
       status: ServerStatus.READY,

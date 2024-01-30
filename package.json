@@ -15,13 +15,10 @@
     "@hapi/boom": "^10.0.1",
     "@homebridge/ciao": "^1.1.8",
     "@hono/node-server": "^1.4.0",
-    "@koa/router": "^12.0.1",
     "@reduxjs/toolkit": "^2.0.1",
     "@u4/opencv4nodejs": "^6.5.2",
     "hono": "^3.12.5",
     "hue-sync": "github:jdmg94/hue-sync",
-    "koa": "^2.14.2",
-    "koa-body": "^6.0.1",
     "localtunnel": "^2.0.2",
     "lodash-es": "^4.17.21",
     "redux-persist": "^6.0.0",
@@ -30,8 +27,6 @@
   "devDependencies": {
     "@swc-node/core": "^1.10.6",
     "@swc/cli": "^0.1.62",
-    "@types/koa": "^2.13.10",
-    "@types/koa__router": "^12.0.3",
     "@types/localtunnel": "^2.0.4",
     "concurrently": "^8.2.2",
     "nodemon": "^3.0.3"

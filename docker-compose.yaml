@@ -3,7 +3,7 @@ services:
   instance:
     build:      
       args:
-        - target=prod # dev | prod
+        - target=dev # dev | prod
     restart: always
     network_mode: "host"
     dns:
