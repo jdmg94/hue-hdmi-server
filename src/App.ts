@@ -68,6 +68,7 @@ export async function startWeb(tunnelUrl: string, port = 8080) {
   });
 
   router.get("/check", (context) => {
+    console.log('checking the status!')
     context.body = {
       status: serverStatus,
     };

@@ -1,9 +1,21 @@
 version: "3.8"
 services:
   instance:
+    build:      
+      args:
+        - target=prod # dev | prod
     restart: always
-    image: superiortech/hue-hdmi-server:dev
     network_mode: "host"
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
     devices:
       - "/dev/video0:/dev/video0"
+    volumes:
+      - .:/usr/src
+      # ideally we would mount node modules on a separate volume
+      # but opencv doesn't play nice with that for now
+      - nodemodules:/usr/src/node_modules
+volumes:
+   nodemodules: {}
 
