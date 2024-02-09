@@ -1,23 +1,13 @@
-import Koa from "koa";
-import Boom from "@hapi/boom";
-import { koaBody } from "koa-body";
-import KoaRouter from "@koa/router";
-import Bonjour from "@homebridge/ciao";
-import { Worker } from "worker_threads";
-import HueSync, { EntertainmentArea } from "hue-sync";
+import Koa from "koa"
+import Boom from "@hapi/boom"
+import HueSync from "hue-sync"
+import { koaBody } from "koa-body"
+import KoaRouter from "@koa/router"
+import Bonjour from "@homebridge/ciao"
+import { Worker } from "worker_threads"
 
-import chunk from "./utils/chunk";
-import sleep from "./utils/sleep";
-import {
-  persistNewCredentials,
-  getRegisteredCredentials,
-} from "./utils/credentialHelpers";
-
-type HueWebState = {
-  isActive: boolean;
-  bridge?: HueSync;
-  entertainmentArea?: EntertainmentArea;
-};
+import chunk from "./utils/chunk"
+import sleep from "./utils/sleep"
 
 enum ServerStatus {
   NOT_READY = "not ready",
@@ -27,30 +17,49 @@ enum ServerStatus {
   ERROR = "error",
 }
 
+const cache = new Map();
+const getBridge = (): HueSync => {
+  if (cache.has('bridge')) {
+    return cache.get('bridge')
+  }
+
+  const id = cache.get('id')
+  const url = cache.get('url')
+  const clientkey = cache.get('key')
+  const username = cache.get('username')
+
+  const bridge = new HueSync({
+    id,
+    url,
+    credentials: {
+      clientkey,
+      username
+    }
+  })
+
+  cache.set('bridge', bridge)
+
+  return bridge
+}
+
 export async function startWeb(tunnelUrl: string, port = 8080) {
   const app = new Koa()
   const router = new KoaRouter()
   const bonjour = Bonjour.getResponder()
   const controller = new AbortController()
   const worker = new Worker("./build/CVWorker")
-  let credentials = await getRegisteredCredentials()
-  let serverStatus = ServerStatus.NOT_READY
 
-  const state: HueWebState = {
-    isActive: false,
-    bridge: undefined,
-    entertainmentArea: undefined,
-  };
-
-  app.use(koaBody());
-  app.use(router.routes());
+  app.use(koaBody())
+  app.use(router.routes())
   app.use(
     router.allowedMethods({
       throw: true,
       notImplemented: () => Boom.notImplemented(),
       methodNotAllowed: () => Boom.methodNotAllowed(),
     })
-  );
+  )
+
+  cache.set("status", ServerStatus.NOT_READY)
 
   const broadcast = bonjour.createService({
     port,
@@ -62,137 +71,117 @@ export async function startWeb(tunnelUrl: string, port = 8080) {
   })
 
   worker.on("message", (message) => {
-    const colorData = chunk<number>(message, 3);
+    const bridge = getBridge()
+    const colorData = chunk<number>(message, 3)
 
-    state.bridge!.transition(colorData as Array<[number, number, number]>);
-  });
+    bridge.transition(colorData as Array<[number, number, number]>)
+  })
 
   router.get("/check", (context) => {
-    console.log('checking the status!')
+    const status = cache.get('status')
+
     context.body = {
-      status: serverStatus,
-    };
-  });
+      status,
+    }
+  })
 
   router.get("/discovery", async (context) => {
-    const devices = await HueSync.discover();
+    const devices = await HueSync.discover()
 
-    context.body = devices;
-  });
+    context.body = devices
+  })
 
   router.post("/register", async (context) => {
-    const ip = context.request.body.ip;
-    const name = context.request.body.name || "hue-hdmi-sync";
+    const { 
+      ip, 
+      name = "hue-hdmi-sync" 
+    } = context.request.body
+    const nextCredentials = await HueSync.register(ip, name)
 
-    const nextCredentials = await HueSync.register(ip, name);
+    cache.set('key', nextCredentials.clientkey)
+    cache.set('user', nextCredentials.username)
 
-    await persistNewCredentials(nextCredentials);
-
-    credentials = nextCredentials;
     context.body = {
       status: "ok",
-    };
-  });
+    }
+  })
 
   router.get("/entertainment-areas", async (context) => {
-    if (!state.bridge) {
-      const notInitializedException =
-        Boom.preconditionFailed("Not Initialized!").output;
+    try {
+      const bridge = getBridge()
+      const data = await bridge.getEntertainmentAreas()
 
-      context.status = notInitializedException.statusCode;
+      context.body = data.map((item) => ({ id: item.id, name: item.name }))
+    } catch (err) {
       context.body = {
-        status: "ERROR",
-        payload: notInitializedException.payload,
-      };
-    } else {
-      const data = await state.bridge?.getEntertainmentAreas();
-
-      context.body = data.map((item) => ({ id: item.id, name: item.name }));
+        error: err.message
+      }
     }
-  });
+  })
 
   router.get("/stream/:id", async (context) => {
-    if (!state.bridge) {
-      const notReadyException = Boom.preconditionFailed(
-        "Not Ready to Stream!"
-      ).output;
-
-      context.status = notReadyException.statusCode;
-      context.body = {
-        status: "ERROR",
-        payload: notReadyException.payload,
-      };
-    } else {
-      const area = await state.bridge?.getEntertainmentArea(context.params.id);
-
-      await state.bridge.start(area);
-      worker.postMessage("start");
-
-      serverStatus = ServerStatus.WORKING;
-
-      state.isActive = true;
-      context.body = {
-        status: serverStatus,
-      };
-    }
-  });
-
-  router.get("/stop", async (context) => {
-    const noSocketException = Boom.preconditionFailed("No Active Stream!");
-    if (!state.bridge) {
-      context.status = noSocketException.output.statusCode;
-      context.body = noSocketException.output.payload;
-      return;
-    }
-
     try {
-      worker.postMessage("stop");
-      await sleep(500);
-      state.bridge?.stop();
+      const bridge = getBridge()
+      const area = await bridge.getEntertainmentArea(context.params.id)
 
-      serverStatus = ServerStatus.IDLE;
+      await bridge.start(area)
+      worker.postMessage("start")
 
-      state.isActive = false;
+      cache.set('status', ServerStatus.WORKING)
+
       context.body = {
-        status: "ok",
+        status: ServerStatus.WORKING,
       };
     } catch {
-      context.status = noSocketException.output.statusCode;
-      context.body = noSocketException.output.payload;
+      // do nothing
     }
-  });
+  })
+
+  router.get("/stop", async (context) => {
+    const bridge = getBridge()
+    const noSocketException = Boom.preconditionFailed("No Active Stream!");
+    try {
+      worker.postMessage("stop")
+      await sleep(500)
+      bridge.stop()
+      cache.set('status', ServerStatus.IDLE)
+
+      context.body = {
+        status: "ok",
+      }
+    } catch {
+      context.status = noSocketException.output.statusCode
+      context.body = noSocketException.output.payload
+    }
+  })
 
   router.put("/quick-start", async (context) => {
-    credentials = {
-      clientkey: context.request.body.key,
-      username: context.request.body.user,
-    };
-    state.bridge = new HueSync({
-      id: context.request.body.id,
-      credentials,
-      url: context.request.body.ip,
-    });
+    const {
+      id, url, key, user,
+    } = context.request.body
 
-    await persistNewCredentials(credentials);
-
-    serverStatus = ServerStatus.READY;
+    cache.set('id', id)
+    cache.set('url', url)
+    cache.set('key', key)
+    cache.set('username', user)
+    cache.set('status', ServerStatus.READY)
 
     context.body = {
-      status: serverStatus,
-    };
-  });
+      status: ServerStatus.READY,
+    }
+  })
 
-  broadcast.advertise();
+  broadcast.advertise()
   app.listen({
-    host: "0.0.0.0",
     port,
+    host: "0.0.0.0",
     signal: controller.signal,
-  });
+  })
 
   return () => {
-    controller.abort();
+    controller.abort()
     broadcast.end().then(() => {
-      broadcast.destroy();
-    });
-  };
+      broadcast.destroy()
+    })
+  }
 }

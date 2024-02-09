@@ -1,5 +1,8 @@
 FROM superiortech/opencv4nodejs
 
+# add opencv installation
+ENV NODE_PATH=/usr/lib/node_modules
+
 # install dependencies
 RUN apt-get update 
 RUN apt-get install -y --no-install-recommends dumb-init curl git
@@ -18,6 +21,13 @@ EXPOSE 443
 EXPOSE 8080
 EXPOSE 3000
 EXPOSE 2100/udp
+
+# install all dependencies
+COPY package.json .
+COPY pnpm-lock.yaml .
+
+RUN pnpm install --ignore-scripts --reporter=silent
+RUN rm -rf /usr/src/node_modules/@u4
 
 # link source code
 ADD . .
