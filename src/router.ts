@@ -3,7 +3,6 @@ import Boom from "@hapi/boom"
 import HueSync from "hue-sync"
 import { koaBody } from "koa-body"
 import KoaRouter from "@koa/router"
-import Bonjour from "@homebridge/ciao"
 import { Worker } from "worker_threads"
 
 import chunk from "./utils/chunk"
@@ -42,13 +41,14 @@ const getBridge = (): HueSync => {
   return bridge
 }
 
-export async function startWeb(tunnelUrl: string, port = 8080) {
+export async function startWeb(port = 8000) {
   const app = new Koa()
   const router = new KoaRouter()
-  const bonjour = Bonjour.getResponder()
   const controller = new AbortController()
   const worker = new Worker("./build/CVWorker")
 
+  cache.set("status", ServerStatus.NOT_READY)
+  
   app.use(koaBody())
   app.use(router.routes())
   app.use(
@@ -58,17 +58,6 @@ export async function startWeb(tunnelUrl: string, port = 8080) {
       methodNotAllowed: () => Boom.methodNotAllowed(),
     })
   )
-
-  cache.set("status", ServerStatus.NOT_READY)
-
-  const broadcast = bonjour.createService({
-    port,
-    name: "Hue HDMI Sync",
-    type: "hue-hdmi-sync",
-    txt: {
-      url: tunnelUrl,
-    }
-  })
 
   worker.on("message", (message) => {
     const bridge = getBridge()
@@ -171,17 +160,13 @@ export async function startWeb(tunnelUrl: string, port = 8080) {
     }
   })
 
-  broadcast.advertise()
   app.listen({
     port,
     host: "0.0.0.0",
     signal: controller.signal,
   })
 
-  return () => {
-    controller.abort()
-    broadcast.end().then(() => {
-      broadcast.destroy()
-    })
-  }
+  console.log(`listening on port ${port}!`)
+
+  return controller.abort 
 }

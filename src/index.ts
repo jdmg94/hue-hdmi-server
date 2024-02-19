@@ -1,19 +1,15 @@
-import { startWeb } from "./App"
-import localtunnel from "localtunnel"
+import { startWeb } from "./router"
+import { startTunnel } from "./tunnel"
 
 const init = async () => {
   const port = 3000
-  const host = "https://lt.josemunoz.dev"
-  const tunnel = await localtunnel({ port, host })
-  const closeServer = await startWeb(tunnel.url, port)
-
-  console.log(`listening on port ${port}!`)
-  console.log(`tunneling to ${tunnel.url}`)
-
+  const closeServer = await startWeb(port)
+  const closeTunnel = await startTunnel({ port })
+  
   const closeGracefully: NodeJS.SignalsListener = (signal) => {
     console.log(`*^!@4=> Received signal to terminate: ${signal}`)
 
-    tunnel.close()
+    closeTunnel()
     closeServer()
 
     // await other things we should cleanup nicely
@@ -24,9 +20,13 @@ const init = async () => {
   process.once("SIGTERM", closeGracefully)
 }
 
-const tryAgain = (e: Error) => {
-  console.log(`something went wrong! ${e.message}`)
+const tryAgain = (e: Error = undefined) => {
+  if (e) {
+    console.log(`something went wrong! ${e.message}`)
+  }
+
   init().catch(tryAgain)
 }
 
-init().catch(tryAgain)
+tryAgain()
+
