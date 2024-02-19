@@ -1,9 +1,10 @@
 import { startWeb } from "./App"
-import localtunnel from 'localtunnel'
+import localtunnel from "localtunnel"
 
 const init = async () => {
   const port = 3000
-  const tunnel = await localtunnel({ port })
+  const host = "https://lt.josemunoz.dev"
+  const tunnel = await localtunnel({ port, host })
   const closeServer = await startWeb(tunnel.url, port)
 
   console.log(`listening on port ${port}!`)
@@ -23,4 +24,9 @@ const init = async () => {
   process.once("SIGTERM", closeGracefully)
 }
 
-init()
+const tryAgain = (e: Error) => {
+  console.log(`something went wrong! ${e.message}`)
+  init().catch(tryAgain)
+}
+
+init().catch(tryAgain)

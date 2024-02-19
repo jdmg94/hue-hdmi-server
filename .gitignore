@@ -132,6 +132,13 @@ dist
 # mac file
 .DS_Store
 
+<<<<<<< HEAD
 client.json
 build
 .pnpm-store/
+=======
+
+.pnpm-store
+build
+client.json
+>>>>>>> feature-own-localtunnel
