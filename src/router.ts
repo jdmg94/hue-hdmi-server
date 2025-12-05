@@ -4,6 +4,9 @@ import HueSync from "hue-sync"
 import { koaBody } from "koa-body"
 import KoaRouter from "@koa/router"
 import { Worker } from "worker_threads"
+import { debuglog } from "util"
+
+const debug = debuglog("router")
 
 import chunk from "./utils/chunk"
 import sleep from "./utils/sleep"
@@ -62,7 +65,7 @@ export async function startWeb(port = 8000) {
   worker.on("message", (message) => {
     const bridge = getBridge()
     const colorData = chunk<number>(message, 3)
-
+    debug("updating color values: %o", colorData)
     bridge.transition(colorData as Array<[number, number, number]>)
   })
 
@@ -102,6 +105,7 @@ export async function startWeb(port = 8000) {
 
       context.body = data.map((item) => ({ id: item.id, name: item.name }))
     } catch (err) {
+      console.error("something went wrong!: ", err instanceof Error ? err.message : String(err))
       context.body = {
         error: err instanceof Error ? err.message : String(err)
       }
@@ -111,7 +115,9 @@ export async function startWeb(port = 8000) {
   router.get("/stream/:id", async (context) => {
     try {
       const bridge = getBridge()
+      debug("bridge acquired")
       const area = await bridge.getEntertainmentArea(context.params.id)
+      debug("entertainment area acquired: %s", context.params.id)
 
       await bridge.start(area)
       worker.postMessage("start")

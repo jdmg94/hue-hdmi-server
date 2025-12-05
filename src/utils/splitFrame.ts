@@ -1,4 +1,14 @@
-import { Size, Rect } from "@u4/opencv4nodejs"
+interface Size {
+  width: number
+  height: number
+}
+
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 interface FrameRegions {
   regions: Rect[]
@@ -8,16 +18,41 @@ interface FrameRegions {
 const splitIntoLightstripGradientRegions = (size: Size): FrameRegions => {
   const halfHeight = Math.floor(size.height / 2)
   const oneThirdWidth = Math.floor(size.width / 3)
-  const firstQuarter = new Rect(0, halfHeight, oneThirdWidth, halfHeight)
-  const secondQuarter = new Rect(0, 0, oneThirdWidth, halfHeight)
-  const oneThird = new Rect(oneThirdWidth, 0, oneThirdWidth, halfHeight)
-  const thirdQuarter = new Rect(oneThirdWidth * 2, 0, oneThirdWidth, halfHeight)
-  const fourthQuarter = new Rect(
-    oneThirdWidth * 2,
-    halfHeight,
-    oneThirdWidth,
-    halfHeight
-  )
+
+  const firstQuarter: Rect = {
+    x: 0,
+    y: halfHeight,
+    width: oneThirdWidth,
+    height: halfHeight,
+  }
+
+  const secondQuarter: Rect = {
+    x: 0,
+    y: 0,
+    width: oneThirdWidth,
+    height: halfHeight,
+  }
+
+  const oneThird: Rect = {
+    x: oneThirdWidth,
+    y: 0,
+    width: oneThirdWidth,
+    height: halfHeight,
+  }
+
+  const thirdQuarter: Rect = {
+    x: oneThirdWidth * 2,
+    y: 0,
+    width: oneThirdWidth,
+    height: halfHeight,
+  }
+
+  const fourthQuarter: Rect = {
+    x: oneThirdWidth * 2,
+    y: halfHeight,
+    width: oneThirdWidth,
+    height: halfHeight,
+  }
 
   // Store unique regions (no duplicates)
   const regions = [

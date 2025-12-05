@@ -1,14 +1,14 @@
 {
   "name": "hue-hdmi-server",
   "version": "0.0.1",
-  "description": "A web server with mDNS discovery that uses OpenCV to sync video input to Phillips Hue lights",
+  "description": "A web server with mDNS discovery that uses FFmpeg and Sharp to sync video input to Phillips Hue lights",
   "main": "build/index.js",
   "scripts": {
     "type-check": "tsc --noEmit",
     "build": "npm run type-check && swc src -d build",
     "clean": "rm -rf build",
-    "dev": "concurrently 'swc src -w -d build' 'nodemon build/index.js'",
-    "start": "node build/index.js",
+    "dev": "concurrently 'swc src -w -d build' 'NODE_EXTRA_CA_CERTS=node_modules/hue-sync/signify.pem nodemon build/index.js'",
+    "start": "NODE_EXTRA_CA_CERTS=node_modules/hue-sync/signify.pem node build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,11 +18,11 @@
     "@hapi/boom": "^10.0.1",
     "@homebridge/ciao": "^1.1.7",
     "@koa/router": "^12.0.1",
-    "@u4/opencv4nodejs": "^6.5.2",
     "hue-sync": "github:jdmg94/hue-sync",
     "koa": "^2.14.2",
     "koa-body": "^6.0.1",
-    "localtunnel": "^2.0.2"
+    "localtunnel": "^2.0.2",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@swc-node/core": "^1.10.6",
@@ -34,7 +34,15 @@
     "nodemon": "^3.0.3",
     "typescript": "^5.3.3"
   },
-  "opencv4nodejs": {
-    "disableAutoBuild": "1"
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "@swc/core"
+    ],
+    "allowedBuiltDependencies": [
+      "sharp"
+    ],
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
   }
 }

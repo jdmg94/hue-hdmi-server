@@ -6,11 +6,11 @@
   </a>
 </p>
 
-> A web server with mDNS discovery that uses OpenCV to sync video input (HDMI capture card) to Philips Hue lights in real-time for ambient lighting effects
+> A web server with mDNS discovery that uses FFmpeg and Sharp to sync video input (HDMI capture card) to Philips Hue lights in real-time for ambient lighting effects
 
 ## Features
 
-- Real-time video frame analysis using OpenCV
+- Real-time video frame analysis using FFmpeg and Sharp
 - Syncs colors to Philips Hue Entertainment areas
 - mDNS service discovery for easy client connection
 - Public URL tunneling via localtunnel
@@ -22,7 +22,7 @@
 
 - HDMI capture device (e.g., `/dev/video0`)
 - Philips Hue Bridge with Entertainment area configured
-- Docker (recommended) or Node.js 16+ with OpenCV installed
+- Docker (recommended) or Node.js 20+ with FFmpeg installed
 - Network access to Hue Bridge
 
 ## Quick Start
@@ -75,7 +75,7 @@ docker build --target production -t hue-hdmi-server:prod .
 ```
 
 **Build Stages:**
-- `base` - Common setup (Node.js, OpenCV, system dependencies)
+- `base` - Common setup (Node.js, FFmpeg, system dependencies)
 - `dependencies` - All npm packages installed
 - `development` - Dev dependencies + source watching
 - `builder` - Type checking and TypeScript compilation
@@ -170,7 +170,6 @@ src/
 ├── CVWorker.ts          # Video processing worker thread
 └── utils/
     ├── splitFrame.ts     # Frame region mapping
-    ├── bgr2rgb.ts        # Color format conversion
     ├── chunk.ts          # Array chunking utility
     └── sleep.ts          # Async sleep helper
 ```
@@ -180,7 +179,7 @@ src/
 - **Runtime:** Node.js with TypeScript
 - **Build:** SWC (fast TypeScript compiler)
 - **Web Framework:** Koa + Koa Router
-- **Video Processing:** OpenCV (opencv4nodejs)
+- **Video Processing:** FFmpeg for capture, Sharp for image processing
 - **Hue Integration:** hue-sync (custom fork)
 - **Service Discovery:** @homebridge/ciao (mDNS)
 - **Tunneling:** localtunnel

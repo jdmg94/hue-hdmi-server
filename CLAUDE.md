@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hue HDMI Server is a web server with mDNS discovery that uses OpenCV to sync video input (HDMI capture card) to Philips Hue lights in real-time. The server captures video frames, analyzes color data from different regions, and sends those colors to Hue entertainment areas for ambient lighting effects.
+Hue HDMI Server is a web server with mDNS discovery that uses FFmpeg and Sharp to sync video input (HDMI capture card) to Philips Hue lights in real-time. The server captures video frames, analyzes color data from different regions, and sends those colors to Hue entertainment areas for ambient lighting effects.
 
 ## Build & Development Commands
 
@@ -52,10 +52,11 @@ docker run -d --net host --device /dev/video0 superiortech/hue-hdmi-server
 
 **CV Worker Thread** (`src/CVWorker.ts`)
 - Runs in separate Worker thread to avoid blocking main server
-- Uses OpenCV to capture video from device (default `/dev/video0`)
+- Uses FFmpeg to capture video from device (default `/dev/video0`)
+- Uses Sharp to process frames and extract color statistics
 - Processes frames at 1280x720, 30 FPS
 - Divides frame into regions matching Philips Hue Lightstrip gradient zones (7 regions)
-- Extracts mean BGR color from each region, converts to RGB
+- Extracts mean RGB color from each region
 - Sends flattened color array back to main thread via `postMessage`
 - Responds to "start", "stop", and "reset" commands
 
@@ -70,9 +71,6 @@ docker run -d --net host --device /dev/video0 superiortech/hue-hdmi-server
 - Splits 1280x720 frame into 7 regions matching Philips Hue Gradient Lightstrip zones
 - Layout: [bottom-left, top-left, top-left, top-center, top-right, top-right, bottom-right]
 - Some regions are intentionally duplicated to match lightstrip segment count
-
-**Color Conversion** (`src/utils/bgr2rgb.ts`)
-- Converts OpenCV's default BGR format to RGB for Hue compatibility
 
 ### State Management
 
@@ -90,10 +88,11 @@ Bridge configuration cached in Map:
 
 ## Special Requirements
 
-### OpenCV Setup
+### FFmpeg & Sharp Setup
 
-- Uses `@u4/opencv4nodejs` with `disableAutoBuild: "1"` in package.json
-- Docker image based on `superiortech/opencv4nodejs` which has OpenCV pre-built
+- Uses FFmpeg for video capture from V4L2 devices
+- Uses Sharp for image processing and color statistics
+- Docker image based on `node:20-slim` with FFmpeg installed via apt
 - Requires video capture device access (e.g., `/dev/video0`)
 
 ### Certificate Configuration
@@ -120,7 +119,10 @@ Bridge configuration cached in Map:
 
 Key libraries:
 - `hue-sync` (custom fork: `github:jdmg94/hue-sync`) - Philips Hue Entertainment API client
-- `@u4/opencv4nodejs` - OpenCV bindings for Node.js
+- `sharp` - High-performance image processing for color extraction
 - `@homebridge/ciao` - mDNS/Bonjour service discovery
 - `localtunnel` - Public URL tunneling
 - `koa` + `@koa/router` - Web framework
+
+System dependencies:
+- `ffmpeg` - Video capture from HDMI capture devices
