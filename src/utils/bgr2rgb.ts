@@ -1,1 +1,1 @@
-export const bgr2rgb = ({ y, x, w }): number[] => [y, x, w]
+export const bgr2rgb = ({ y, x, w }: { y: number; x: number; w: number }): number[] => [y, x, w]

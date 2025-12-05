@@ -1,13 +1,3 @@
-# =============================================================================
-# DEPRECATED: This file is kept for backwards compatibility
-#
-# Please use the environment-specific compose files instead:
-#   - Development: docker-compose -f docker-compose.dev.yml up
-#   - Production:  docker-compose -f docker-compose.prod.yml up
-#
-# This file defaults to development mode for convenience
-# =============================================================================
-
 version: "3.8"
 
 services:
@@ -24,15 +14,21 @@ services:
     devices:
       - "/dev/video0:/dev/video0"
     volumes:
+      # Mount source code for hot reload (read-only to prevent container writes)
       - ./src:/usr/src/src:ro
+      # Mount config files for updates
       - ./.swcrc:/usr/src/.swcrc:ro
       - ./tsconfig.json:/usr/src/tsconfig.json:ro
+      # Separate volume for node_modules (OpenCV constraint)
+      # This prevents the host node_modules from overwriting container's opencv
       - nodemodules:/usr/src/node_modules
+      # Mount build directory back to host for debugging
       - ./build:/usr/src/build
     environment:
       - NODE_ENV=development
+    # Override default CMD if needed
+    # command: pnpm run dev
 
 volumes:
   nodemodules:
     name: hue-hdmi-nodemodules-dev
-

@@ -15,7 +15,7 @@ import splitFrame from "./utils/splitFrame"
 
 let shouldRun = true
 const size = new Size(1280, 720)
-const regions = splitFrame(size)
+const { regions, indices } = splitFrame(size)
 
 const stopVideo = () => {
   shouldRun = false
@@ -23,7 +23,7 @@ const stopVideo = () => {
 
 const processVideo = async () => {
   shouldRun = true
-  const capture = new VideoCapture(CAP_ANY)  
+  const capture = new VideoCapture(CAP_ANY)
 
   await sleep(1000)
 
@@ -31,6 +31,11 @@ const processVideo = async () => {
   capture.set(CAP_PROP_CONVERT_RGB, 1)
   capture.set(CAP_PROP_FRAME_WIDTH, size.width)
   capture.set(CAP_PROP_FRAME_HEIGHT, size.height)
+
+  // Pre-allocate reusable buffer for color data (7 zones × 3 colors = 21 values)
+  const colorBuffer = new Uint32Array(21)
+  // Pre-allocate array to store unique region colors
+  const uniqueColors: number[][] = new Array(regions.length)
 
   const loop = setInterval(() => {
     if (!shouldRun) {
@@ -41,14 +46,25 @@ const processVideo = async () => {
     const frame = capture.read()
 
     if (!frame.empty) {
-      const buffer = regions.flatMap((area) =>
-        bgr2rgb(frame.getRegion(area).mean())
-      )
-      const value = new Uint32Array(buffer)
+      // Calculate mean color for each unique region (no duplicates)
+      for (let i = 0; i < regions.length; i++) {
+        uniqueColors[i] = bgr2rgb(frame.getRegion(regions[i]).mean())
+      }
 
-      parentPort!.postMessage(value, [value.buffer])
+      // Map unique colors to 7 lightstrip zones using indices
+      let bufferIndex = 0
+      for (const idx of indices) {
+        const [r, g, b] = uniqueColors[idx]
+        colorBuffer[bufferIndex++] = r
+        colorBuffer[bufferIndex++] = g
+        colorBuffer[bufferIndex++] = b
+      }
+
+      // Transfer buffer ownership for zero-copy message passing
+      const transferBuffer = colorBuffer.slice()
+      parentPort!.postMessage(transferBuffer, [transferBuffer.buffer])
     }
-  }, 1)
+  }, 33) // 30 FPS = ~33ms per frame
 }
 
 parentPort?.on("message", (message) => {

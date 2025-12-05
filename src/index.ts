@@ -20,7 +20,7 @@ const init = async () => {
   process.once("SIGTERM", closeGracefully)
 }
 
-const tryAgain = (e: Error = undefined) => {
+const tryAgain = (e?: Error) => {
   if (e) {
     console.log(`something went wrong! ${e.message}`)
   }

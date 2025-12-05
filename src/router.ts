@@ -103,7 +103,7 @@ export async function startWeb(port = 8000) {
       context.body = data.map((item) => ({ id: item.id, name: item.name }))
     } catch (err) {
       context.body = {
-        error: err.message
+        error: err instanceof Error ? err.message : String(err)
       }
     }
   })

@@ -1,6 +1,11 @@
 import { Size, Rect } from "@u4/opencv4nodejs"
 
-const splitIntoLightstripGradientRegions = (size: Size): Rect[] => {
+interface FrameRegions {
+  regions: Rect[]
+  indices: number[]
+}
+
+const splitIntoLightstripGradientRegions = (size: Size): FrameRegions => {
   const halfHeight = Math.floor(size.height / 2)
   const oneThirdWidth = Math.floor(size.width / 3)
   const firstQuarter = new Rect(0, halfHeight, oneThirdWidth, halfHeight)
@@ -14,15 +19,20 @@ const splitIntoLightstripGradientRegions = (size: Size): Rect[] => {
     halfHeight
   )
 
-  return [
+  // Store unique regions (no duplicates)
+  const regions = [
     firstQuarter,
-    secondQuarter,
     secondQuarter,
     oneThird,
     thirdQuarter,
-    thirdQuarter,
     fourthQuarter,
   ]
+
+  // Map indices to lightstrip positions (with duplicates)
+  // This allows us to calculate mean() only once per unique region
+  const indices = [0, 1, 1, 2, 3, 3, 4]
+
+  return { regions, indices }
 }
 
 export default splitIntoLightstripGradientRegions

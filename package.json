@@ -4,8 +4,11 @@
   "description": "A web server with mDNS discovery that uses OpenCV to sync video input to Phillips Hue lights",
   "main": "build/index.js",
   "scripts": {
-    "build": "swc src -d build",
+    "type-check": "tsc --noEmit",
+    "build": "npm run type-check && swc src -d build",
+    "clean": "rm -rf build",
     "dev": "concurrently 'swc src -w -d build' 'nodemon build/index.js'",
+    "start": "node build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -28,7 +31,8 @@
     "@types/koa__router": "^12.0.3",
     "@types/localtunnel": "^2.0.4",
     "concurrently": "^8.2.2",
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.0.3",
+    "typescript": "^5.3.3"
   },
   "opencv4nodejs": {
     "disableAutoBuild": "1"
